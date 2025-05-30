@@ -1,0 +1,85 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Controllo Cancello</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 2rem; }
+    button { font-size: 1.2rem; margin: 1rem; padding: 1rem 2rem; }
+    #user-info { margin-top: 1.5rem; }
+  </style>
+</head>
+<body>
+  <h2>🔐 Controllo Cancello Remoto</h2>
+  <div id="login-area">
+    <button onclick="login()">Accedi con Google</button>
+  </div>
+  <div id="main-area" style="display:none;">
+    <p id="user-info"></p>
+    <button onclick="apriCancello('gate1')">Apri Cancello 1</button>
+    <button onclick="apriCancello('gate2')">Apri Cancello 2</button>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyA5Sq2WYCq6Ima7Tas6ghTQkbn_gpfQOt8",
+      authDomain: "cancellorancemus.firebaseapp.com",
+      databaseURL: "https://cancellorancemus.firebaseio.com",
+      projectId: "cancellorancemus",
+      appId: "1:546837546818:web:demo"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+
+    function sanitizeEmail(email) {
+      return email.replaceAll('.', ',');
+    }
+
+    function showMain(email) {
+      document.getElementById('login-area').style.display = "none";
+      document.getElementById('main-area').style.display = "block";
+      document.getElementById('user-info').innerText = "Ciao " + email;
+    }
+
+    function checkAuthorization(user) {
+      const email = user.email;
+      const ref = firebase.database().ref("authorized_users/" + sanitizeEmail(email));
+      ref.get().then(snapshot => {
+        if (snapshot.exists() && snapshot.val() === true) {
+          showMain(email);
+        } else {
+          alert("❌ Non sei autorizzato ad aprire il cancello.");
+          firebase.auth().signOut();
+        }
+      });
+    }
+
+    function login() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      firebase.auth().signInWithPopup(provider)
+        .then(result => checkAuthorization(result.user))
+        .catch(error => console.error("Errore login:", error));
+    }
+
+    function apriCancello(gate) {
+      const ref = firebase.database().ref(gate + "/open");
+      ref.set(true).then(() => {
+        alert("✅ " + (gate === "gate1" ? "Cancello 1" : "Cancello 2") + " aperto!");
+      }).catch(error => {
+        alert("❌ Errore apertura cancello: " + error.message);
+      });
+    }
+
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) {
+        checkAuthorization(user);
+      }
+    });
+  </script>
+</body>
+</html>
